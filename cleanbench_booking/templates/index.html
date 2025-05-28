@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>クリーンベンチ予約システム</title>
+    <style>
+        /* 簡単なCSS。実際はもっと凝ったデザインになります */
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f7f6; color: #333; }
+        h1, h2 { color: #2c3e50; }
+        .calendar-nav { display: flex; align-items: center; justify-content: center; margin-bottom: 20px; background-color: #e0f2f7; padding: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .calendar-nav a { margin: 0 15px; text-decoration: none; color: #007bff; font-weight: bold; font-size: 1.1em; transition: color 0.3s ease; }
+        .calendar-nav a:hover { color: #0056b3; }
+        .calendar-nav h2 { margin: 0; color: #2c3e50; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; table-layout: fixed; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        th, td { border: 1px solid #e0e0e0; padding: 10px; text-align: center; vertical-align: top; height: 100px; /* カレンダーセルの高さ */ }
+        th { background-color: #f0f0f0; color: #555; }
+        td:first-child { color: #d9534f; } /* 日曜日 */
+        td:last-child { color: #007bff; }  /* 土曜日 */
+        .today { background-color: #fffacd; border: 2px solid #ffcc00; } /* 今日の日付 */
+        .other-month { color: #aaa; background-color: #fafafa; } /* 他の月の日付 */
+        .has-reservation { background-color: #e6f7ff; cursor: pointer; border: 1px solid #aaddff; } /* 予約ありの日 (淡い水色) */
+        .reservation-details { text-align: left; font-size: 0.75em; margin-top: 5px; overflow-y: auto; max-height: 60px; /* 予約表示エリアの高さ */ }
+        .reservation-details p { margin: 2px 0; line-height: 1.2; color: #444; }
+        .flash-message { padding: 10px; margin-bottom: 15px; border-radius: 5px; font-weight: bold; }
+        .flash-message.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash-message.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        form { margin-top: 30px; padding: 25px; border: 1px solid #eee; border-radius: 8px; background-color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        form label { display: block; margin-bottom: 8px; font-weight: bold; color: #555; }
+        form input[type="text"],
+        form input[type="date"],
+        form input[type="time"] {
+            width: calc(100% - 20px);
+            max-width: 250px;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1em;
+        }
+        form button {
+            padding: 12px 25px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: background-color 0.3s ease;
+        }
+        form button:hover {
+            background-color: #218838;
+        }
+        .list-link { margin-top: 20px; text-align: center; }
+        .list-link a { text-decoration: none; color: #007bff; font-weight: bold; }
+        .list-link a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <h1>クリーンベンチ予約システム</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class="flash-messages">
+                {% for category, message in messages %}
+                    <li class="flash-message {{ category }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+
+    <div class="calendar-nav">
+        <a href="{{ url_for('index', year=prev_month_year, month=prev_month_month) }}">« 前月</a>
+        <h2>{{ year }}年 {{ month }}月</h2>
+        <a href="{{ url_for('index', year=next_month_year, month=next_month_month) }}">次月 »</a>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>日</th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>土</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for week in month_calendar %}
+                <tr>
+                    {% for day in week %}
+                        {% set current_date_str = day.strftime('%Y-%m-%d') %}
+                        <td class="
+                            {% if day.month != month %}other-month{% endif %}
+                            {% if day == today.date() %}today{% endif %}
+                            {% if current_date_str in reservations_by_date and reservations_by_date[current_date_str] %}has-reservation{% endif %}
+                        " data-date="{{ current_date_str }}">
+                            {% if day.month == month %}
+                                {{ day.day }}
+                            {% else %}
+                                &nbsp; {% endif %}
+                            <div class="reservation-details">
+                                {% if current_date_str in reservations_by_date %}
+                                    {% for res in reservations_by_date[current_date_str] %}
+                                        <p>{{ res.start_time.split(' ')[1][:5] }} - {{ res.end_time.split(' ')[1][:5] }} ({{ res.user_name }})</p>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                        </td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>新規予約</h2>
+    <form action="{{ url_for('reserve') }}" method="post">
+        <label for="user_name">名前:</label>
+        <input type="text" id="user_name" name="user_name" required><br>
+
+        <label for="start_date">日付:</label>
+        <input type="date" id="start_date" name="start_date" required min="{{ today.strftime('%Y-%m-%d') }}" max="{{ max_bookable_date.strftime('%Y-%m-%d') }}"><br>
+
+        <label for="start_time">開始時刻:</label>
+        <input type="time" id="start_time" name="start_time" required step="900"><br> <label for="end_time">終了時刻:</label>
+        <input type="time" id="end_time" name="end_time" required step="900"><br>
+
+        <button type="submit">予約する</button>
+    </form>
+
+    <div class="list-link">
+        <p><a href="{{ url_for('list_reservations') }}">全予約をリストで見る</a></p>
+    </div>
+
+    <script>
+        // カレンダーの日付クリックでフォームにセットするJS
+        document.querySelectorAll('td[data-date]').forEach(cell => {
+            // 他の月の日付はクリックイベントを無効にする
+            if (!cell.classList.contains('other-month')) {
+                cell.addEventListener('click', () => {
+                    const date = cell.dataset.date;
+                    document.getElementById('start_date').value = date;
+                });
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>予約変更</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f7f6; color: #333; }
+        h1 { color: #2c3e50; text-align: center; }
+        form { margin: 30px auto; padding: 25px; border: 1px solid #eee; border-radius: 8px; background-color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 500px; }
+        form label { display: block; margin-bottom: 8px; font-weight: bold; color: #555; }
+        form input[type="text"],
+        form input[type="date"],
+        form input[type="time"] {
+            width: calc(100% - 20px);
+            max-width: 250px;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1em;
+        }
+        form button {
+            padding: 12px 25px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: background-color 0.3s ease;
+        }
+        form button:hover {
+            background-color: #0056b3;
+        }
+        .back-link { margin-top: 20px; text-align: center; }
+        .back-link a { text-decoration: none; color: #007bff; font-weight: bold; }
+        .back-link a:hover { text-decoration: underline; }
+        .flash-message { padding: 10px; margin-bottom: 15px; border-radius: 5px; font-weight: bold; text-align: center; }
+        .flash-message.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash-message.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
+</head>
+<body>
+    <h1>予約変更</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class="flash-messages">
+                {% for category, message in messages %}
+                    <li class="flash-message {{ category }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+
+    <form action="{{ url_for('update_reservation', reservation_id=reservation.id) }}" method="post">
+        <label for="user_name">名前:</label>
+        <input type="text" id="user_name" name="user_name" value="{{ reservation.user_name }}" required><br>
+
+        <label for="start_date">日付:</label>
+        <input type="date" id="start_date" name="start_date" value="{{ start_date }}" required
+               min="{{ today.strftime('%Y-%m-%d') }}" max="{{ max_bookable_date.strftime('%Y-%m-%d') }}"><br>
+
+        <label for="start_time">開始時刻:</label>
+        <input type="time" id="start_time" name="start_time" value="{{ start_time }}" required step="900"><br>
+
+        <label for="end_time">終了時刻:</label>
+        <input type="time" id="end_time" name="end_time" value="{{ end_time }}" required step="900"><br>
+
+        <button type="submit">予約を更新</button>
+    </form>
+
+    <div class="back-link">
+        <p><a href="{{ url_for('list_reservations') }}">予約リストに戻る</a></p>
+    </div>
+</body>
+</html>
